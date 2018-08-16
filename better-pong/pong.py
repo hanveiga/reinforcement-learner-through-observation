@@ -11,6 +11,7 @@ and the associated code
 from __future__ import print_function
 
 import argparse
+import time
 import pickle
 import numpy as np
 import gym
@@ -27,7 +28,6 @@ lamb = 0
 def set_volume_handler_oc(unused_addr, args):
     global lamb
     lamb = args
-    print(lamb)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--hidden_layer_size', type=int, default=200)
@@ -174,7 +174,7 @@ if train:
 if evaluation:
     # evaluate (stop training)
     dispatcher = dispatcher.Dispatcher()
-    dispatcher.map("/observing", set_volume_handler_oc)
+    dispatcher.map("/observation", set_volume_handler_oc)
 
     server = osc_server.ThreadingOSCUDPServer(
         ("127.0.0.1", 8013), dispatcher)
@@ -208,9 +208,13 @@ if evaluation:
             print(observation_delta)
             up_probability2 = network2.forward_pass(observation_delta)[0]
             print(observation_delta)
-            print(up_probability1,up_probability2)
+            # print(up_probability1,up_probability2)
             #lamb = 0.5
-
+            print(lamb)
+            if lamb >  0.5:
+                lamb = 1
+            if lamb < 0.0:
+                lamb = 0
             up_probability = lamb*up_probability1 + (1-lamb)*up_probability2
 
 
@@ -220,6 +224,7 @@ if evaluation:
                 action = DOWN_ACTION
 
             observation, reward, episode_done, info = env.step(action)
+            time.sleep(0.04)
             observation = prepro(observation)
             episode_reward_sum += reward
             n_steps += 1
