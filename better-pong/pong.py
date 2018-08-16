@@ -18,16 +18,17 @@ import gym
 
 import tensorflow as tf
 
+import collections
 from pythonosc import dispatcher, osc_server
 import threading
 
 from policy_network import Network
 
-lamb = 0
+lamb_ext = 0
 
 def set_volume_handler_oc(unused_addr, args):
-    global lamb
-    lamb = args
+    global lamb_ext
+    lamb_ext = args
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--hidden_layer_size', type=int, default=200)
@@ -42,8 +43,9 @@ args = parser.parse_args()
 # Action values to send to gym environment to move paddle up/down
 UP_ACTION = 2
 DOWN_ACTION = 3
+NO_ACTION = 0
 # Mapping from action values to outputs from the policy network
-action_dict = {DOWN_ACTION: 0, UP_ACTION: 1}
+action_dict = {DOWN_ACTION: 0, UP_ACTION: 1, NO_ACTION:3}
 
 
 # From Andrej's code
@@ -174,14 +176,16 @@ if train:
 if evaluation:
     # evaluate (stop training)
     dispatcher = dispatcher.Dispatcher()
-    dispatcher.map("/observation", set_volume_handler_oc)
+    dispatcher.map("/observing", set_volume_handler_oc)
 
     server = osc_server.ThreadingOSCUDPServer(
         ("127.0.0.1", 8013), dispatcher)
     server_thread = threading.Thread(target=server.serve_forever)
     print("Serving on {}".format(server.server_address))
     server_thread.start()
-
+    probability_no_action = 0.01
+    historic_lamb = collections.deque(5*[0], 5)
+    decaying = False
     while True:
         print("Starting episode %d" % episode_n)
 
@@ -210,20 +214,51 @@ if evaluation:
             print(observation_delta)
             # print(up_probability1,up_probability2)
             #lamb = 0.5
-            print(lamb)
-            if lamb >  0.5:
-                lamb = 1
-            if lamb < 0.0:
-                lamb = 0
-            up_probability = lamb*up_probability1 + (1-lamb)*up_probability2
+            print(lamb_ext)
+            lamb = lamb_ext
+            print(historic_lamb)
+            if (historic_lamb[0] - lamb_ext) > 0.05:
+                print('decay_lamb')
+                lamb = historic_lamb[0]*np.exp(-0.07)
+                print('after decay')
+                print(lamb)
+                decaying = True
+            print(historic_lamb[0],lamb_ext, lamb, historic_lamb[0]-lamb)
+            historic_lamb.appendleft(lamb)
 
-
-            if np.random.uniform() < up_probability:
-                action = UP_ACTION
+            if not decaying:
+                if lamb >  0.5:
+                    lamb = 1
+                if lamb < 0.0:
+                    lamb = 0
             else:
-                action = DOWN_ACTION
+                decaying = False
+                pass
 
-            observation, reward, episode_done, info = env.step(action)
+            up_probability = up_probability1 #lamb*up_probability1 + (1-lamb)*up_probability2
+
+
+            if lamb < 0.3:
+                probability_no_action = 0.8*np.exp(-lamb)
+                time.sleep(0.025*np.exp(-lamb))
+            else:
+                probability_no_action = 0.0
+            print(probability_no_action)
+
+            if probability_no_action > np.random.uniform():
+                action = NO_ACTION
+                observation, reward, episode_done, info = env.step(0)
+            else:
+                if np.random.uniform() < up_probability:
+                    action = UP_ACTION
+                else:
+                    action = DOWN_ACTION
+
+                observation, reward, episode_done, info = env.step(action)
+
+            historic_lamb.appendleft(lamb)
+            # if derivative of lamb is negative, start decaying
+
             time.sleep(0.04)
             observation = prepro(observation)
             episode_reward_sum += reward
@@ -239,6 +274,7 @@ if evaluation:
             if reward != 0:
                 round_n += 1
                 n_steps = 0
+
 
         print("Episode %d finished after %d rounds" % (episode_n, round_n))
 
