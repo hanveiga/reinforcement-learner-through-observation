@@ -17,6 +17,11 @@ import threading
 import parameters as p
 
 
+def print_volume_handler_oc(unused_addr, args):
+    print(args)
+    DQA.set_interaction_level(args)
+
+
 def exit_handler():
 	global DQA
 	DQA.quit()
@@ -135,9 +140,8 @@ if __name__ == '__main__':
 	episode = 0
 	frame_counter = 0
 
-
 	dispatcher = dispatcher.Dispatcher()
-	dispatcher.map("/smile", print)
+	dispatcher.map("/smile", print_volume_handler_oc)
 
 	server = osc_server.ThreadingOSCUDPServer(
 		("127.0.0.1", 8011), dispatcher)

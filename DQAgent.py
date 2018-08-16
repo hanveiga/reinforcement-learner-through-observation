@@ -2,6 +2,9 @@ import numpy as np
 from DQNetwork import DQNetwork
 from random import random, randrange, randint
 
+def get_interaction_level():
+    return 0
+
 class DQAgent:
     def __init__(self,
                  actions,
@@ -74,8 +77,8 @@ class DQAgent:
         """
         val = random()
         is_random = (val < (self.epsilon if not testing else 0.05)) # this compares the initial / exploratory parameter to some randomly sampled value
-        print(val)
-        print(self.epsilon)
+        #print(val)
+        #print(self.epsilon)
         if force_random or is_random:
             print('getting random')
 
@@ -264,6 +267,12 @@ class DQAgent_split(DQAgent):
         self.counter = 0
         self.policy = 0
 
+        self.looking_level = get_interaction_level()
+
+
+    def set_interaction_level(self, level):
+        self.looking_level = level
+
     def get_action(self, state, testing=False, force_random=False):
         """
         Polls DQN for Q-values. Returns argmax(Q) with probability 1-epsilon
@@ -285,25 +294,51 @@ class DQAgent_split(DQAgent):
         is_random = (random() < (self.epsilon if not testing else 0.05)) # this compares the initial / exploratory parameter to some randomly sampled value
         looking = np.random.uniform(0,1)
 
+        #self.looking_level = get_interaction_level()
+        #print(self.looking_level)
         
-        if force_random or is_random:
-            return randint(0, self.actions - 1)
-        elif self.policy == 0 :
-            print('network 1')
-            q_values = self.DQN_lazy.predict(state)
-            #print(q_values)
-            return np.argmin(q_values)
-              #self.DQN.predict(state) # q-value -> how good is the action which is being performed (how good is the action in the context of state)
-                                                #state: enviroment - picture of the game (processed)
-                                             # returns the action which maximizes the q-value
-        elif self.policy == 1:
-            print('network 2')
-            q_values = self.DQN.predict(state) # q-value -> how good is the action which is being performed (how good is the action in the context of state)
-                                                #state: enviroment - picture of the game (processed)
-                                                # returns the action which maximizes the q-value 
+        blending = True 
 
-            #print(q_values)
-            return np.argmax(q_values)
+        if blending:
+            if force_random or is_random:
+                return randint(0, self.actions - 1)
+            else:
+                
+                q_values1 = self.DQN_lazy.predict(state)
+                q_values2 = self.DQN.predict(state)
+                
+                #interpolate between values based on looking_level
+                looking_par = self.looking_level
+                q_values_new = [looking_par*a + (1-looking_par)*b for a, b in zip(q_values1,q_values2)]
+
+                #print(q_values1, q_values2, q_values_new, looking_par)
+
+                #print(q_values)
+                return np.argmax(q_values_new)
+                  #self.DQN.predict(state) # q-value -> how good is the action which is being performed (how good is the action in the context of state)
+                                                    #state: enviroment - picture of the game (processed)
+                                                 # returns the action which maximizes the q-value
+        else:
+            if force_random or is_random:
+                return randint(0, self.actions - 1)
+            elif self.policy == 0 :
+                #print('network 1')
+                q_values = self.DQN_lazy.predict(state)
+                #print(q_values)
+                return np.argmin(q_values)
+                  #self.DQN.predict(state) # q-value -> how good is the action which is being performed (how good is the action in the context of state)
+                                                    #state: enviroment - picture of the game (processed)
+                                                 # returns the action which maximizes the q-value
+            elif self.policy == 1:
+                #print('network 2')
+                q_values = self.DQN.predict(state) # q-value -> how good is the action which is being performed (how good is the action in the context of state)
+                                                    #state: enviroment - picture of the game (processed)
+                                                    # returns the action which maximizes the q-value 
+
+                #print(q_values)
+                return np.argmax(q_values)
+
+
 
     def quit(self):
         """
