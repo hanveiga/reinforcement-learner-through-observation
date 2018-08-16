@@ -17,7 +17,17 @@ import gym
 
 import tensorflow as tf
 
+from pythonosc import dispatcher, osc_server
+import threading
+
 from policy_network import Network
+
+lamb = 0
+
+def set_volume_handler_oc(unused_addr, args):
+    global lamb
+    lamb = args
+    print(lamb)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--hidden_layer_size', type=int, default=200)
@@ -70,14 +80,6 @@ with tf.Graph().as_default() as net1_graph:
     if args.load_checkpoint:
         network.load_checkpoint()
 
-#net1 = CreateAlexNet()
-#saver1 = tf.train.Saver(...)
-#sess1 = tf.Session(graph=net1_graph)
-#saver1.restore(sess1, 'epoch_10.ckpt')
-
-
-
-
 batch_state_action_reward_tuples = []
 smoothed_reward = None
 episode_n = 1
@@ -93,10 +95,10 @@ if evaluation:
 
     with tf.Graph().as_default() as net2_graph:
         network2 = Network(
-        args.hidden_layer_size, args.learning_rate, net2_graph, checkpoints_dir='checkpoints')
+        args.hidden_layer_size, args.learning_rate, net2_graph, checkpoints_dir='checkpoints_bad')
         
         if args.load_checkpoint:
-            network.load_checkpoint()
+            network2.load_checkpoint()
 
 print(network)
 print(network2)
@@ -171,6 +173,15 @@ if train:
 
 if evaluation:
     # evaluate (stop training)
+    dispatcher = dispatcher.Dispatcher()
+    dispatcher.map("/observing", set_volume_handler_oc)
+
+    server = osc_server.ThreadingOSCUDPServer(
+        ("127.0.0.1", 8013), dispatcher)
+    server_thread = threading.Thread(target=server.serve_forever)
+    print("Serving on {}".format(server.server_address))
+    server_thread.start()
+
     while True:
         print("Starting episode %d" % episode_n)
 
@@ -198,7 +209,7 @@ if evaluation:
             up_probability2 = network2.forward_pass(observation_delta)[0]
             print(observation_delta)
             print(up_probability1,up_probability2)
-            lamb = 0.5
+            #lamb = 0.5
 
             up_probability = lamb*up_probability1 + (1-lamb)*up_probability2
 
