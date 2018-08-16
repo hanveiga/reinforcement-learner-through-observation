@@ -80,11 +80,10 @@ class DQAgent:
         #print(val)
         #print(self.epsilon)
         if force_random or is_random:
-            print('getting random')
-
+            #print('getting random')
             return randint(0, self.actions - 1)
         else:
-            print('network 2')
+            #print('network 2')
             q_values = self.DQN.predict(state) # q-value -> how good is the action which is being performed (how good is the action in the context of state)
                                                 #state: enviroment - picture of the game (processed)
                                                 # returns the action which maximizes the q-value 

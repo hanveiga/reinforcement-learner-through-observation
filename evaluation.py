@@ -3,7 +3,7 @@ import gym
 import numpy as np
 import utils
 
-max_mean_score = 0
+max_mean_score = -np.inf
 
 
 def evaluate(DQA, args, logger):
@@ -57,14 +57,19 @@ def evaluate(DQA, args, logger):
                 break
                 
         scores.append([t, score])
+        print('mean scores:')
+        print(np.mean(scores))
 
     scores = np.asarray(scores)
     max_indices = np.argwhere(scores[:, 1] == np.max(scores[:, 1])).ravel()
     max_idx = np.random.choice(max_indices)
 
     # Save best model
+    print('mean scores:')
+    print(np.mean(scores))
     if max_mean_score < np.mean(scores):
         max_mean_score = np.mean(scores)
         DQA.DQN.save(append='_best')
+        print('saved best model')
 
     return scores[max_idx, :].ravel()

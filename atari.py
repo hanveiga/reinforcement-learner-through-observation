@@ -162,7 +162,10 @@ if args.train:
         # Main episode loop
         t = 0
         frame_counter += 1
+
         while t < args.max_episode_length:
+
+            t_evaluation, score_evaluation = evaluate(DQA, args, logger)
             # Stop the episode if it takes too long
             if frame_counter > args.max_frames_number:
                 DQA.quit()
@@ -224,6 +227,8 @@ if args.train:
                 break
 
             t += 1
+
+            
 
             # Evaluate the agent's performance
             if frame_counter % args.test_freq == 0:

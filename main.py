@@ -141,10 +141,10 @@ if __name__ == '__main__':
 	frame_counter = 0
 
 	dispatcher = dispatcher.Dispatcher()
-	dispatcher.map("/smile", print_volume_handler_oc)
+	dispatcher.map("/observing", print_volume_handler_oc)
 
 	server = osc_server.ThreadingOSCUDPServer(
-		("127.0.0.1", 8011), dispatcher)
+		("127.0.0.1", 8013), dispatcher)
 	server_thread = threading.Thread(target=server.serve_forever)
 	print("Serving on {}".format(server.server_address))
 	server_thread.start()
